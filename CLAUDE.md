@@ -116,6 +116,29 @@ Omega ──[proof + status]──→ ธาม
 - `/gate` — risk gate task contract (validate fields, assess risk level, decide go/no-go)
 - `/proof` — verify output exists, เขียน proof JSON ลง ψ/outbox/
 
+## Hooks
+
+| Hook | Event | ทำอะไร |
+|------|-------|--------|
+| `statusline.sh` | StatusLine | แสดง `Ω {%} {used}k/{max}k • {time} • {model} on {branch}` |
+| `force-rrr-at-80.sh` | PostToolUse | เตือน 70%, บังคับ /rrr ที่ 80% context |
+| `cc-tham-on-stop.sh` | Stop | cc ธาม อัตโนมัติ + เตือน /forward (debounce 60s) |
+
+Hooks อยู่ที่ `.claude/hooks/` — ใช้ python3 แทน jq (jq ไม่มีใน env นี้)
+
+## Skills
+
+29 standard skills ติดตั้งที่ `.claude/skills/` ผ่าน oracle-skills-cli
+
+Omega custom skills:
+
+| Skill | trigger | หน้าที่ |
+|-------|---------|--------|
+| gate | `/gate` | validate task contract + GO/NO-GO |
+| proof | `/proof` | verify งาน + เขียน proof JSON |
+
+Standard skills ที่ใช้บ่อย: `/recap`, `/rrr`, `/forward`, `/talk-to`
+
 ## Pre-allowed Bash Commands
 
 Commands in `.claude/settings.json` ที่ไม่ต้องขอ permission:

@@ -20,7 +20,22 @@
       "Bash(git push -f *)"
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "/mnt/d/Git/omega-oracle/.claude/hooks/statusline.sh"
+  },
   "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/mnt/d/Git/omega-oracle/.claude/hooks/force-rrr-at-80.sh"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "",
