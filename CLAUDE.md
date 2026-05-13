@@ -134,6 +134,40 @@ Denied always: `git push --force*`, `git push -f *`, `rm -rf /`
 - `maw hey tham "cc: Omega — {summary}"` อัตโนมัติ
 - Lock file `/tmp/cc-tham-omega.lock` ป้องกัน double-fire (TTL 60s)
 
+## maw — Multi-Agent Workflow
+
+Omega ลงทะเบียนเป็น window 02 ใน fleet:
+
+```bash
+maw fleet ls          # ดู fleet (tham=01, omega=02)
+maw fleet validate    # ตรวจ config
+maw wake omega        # ปลุก Omega session
+maw peek omega        # ดูหน้าจอ Omega
+maw oracle ls         # สถานะทุก Oracle
+```
+
+### ส่งข้อความ
+
+```bash
+# หา ธาม (ใช้ talk-to เป็นหลัก — มี audit trail)
+maw talk-to tham "message"   # primary
+maw hey tham "message"       # fallback ถ้า MCP ล่ม
+```
+
+### Fleet config
+
+- Omega fleet: `~/.config/maw/fleet/02-omega.json`
+- maw config: `~/.config/maw/maw.config.json` — `agents.omega = "tham-node"`
+- ghq path: `/root/ghq/github.com/E0993599799/Omega` → symlink ไปที่ `/mnt/d/Git/omega-oracle`
+
+### Loops (ถ้าต้องการ scheduled task)
+
+```bash
+maw loop             # ดู loops ทั้งหมด
+maw loop add '{...}' # สร้าง loop ใหม่
+# ห้ามใช้ CronCreate — ไม่ persist ข้าม session
+```
+
 ## MCP Server — Oracle-v2
 
 Config ใน `.mcp.json`:
