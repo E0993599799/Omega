@@ -183,13 +183,63 @@ maw hey tham "message"       # fallback ถ้า MCP ล่ม
 - maw config: `~/.config/maw/maw.config.json` — `agents.omega = "tham-node"`
 - ghq path: `/root/ghq/github.com/E0993599799/Omega` → symlink ไปที่ `/mnt/d/Git/omega-oracle`
 
-### Loops (ถ้าต้องการ scheduled task)
+### maw v26.5.2 — Available Commands
+
+`maw loop` ไม่มีใน v26.5.2 — scheduled tasks ใช้ระบบอื่น
+
+Commands ที่มี: `oracle`, `fleet`, `federation`, `wake`, `peek`, `hey`, `talk-to`, `transport`, `preflight`
+
+## Federation
+
+### Current Topology
+
+```
+tham-node (single-machine — WSL2)
+├── tham   (window 01) — Brain/Orchestrator
+└── omega  (window 02) — Core bridge/gate/proof
+```
+
+Node: `tham-node` | Port: `3457` | bind: `0.0.0.0` (ready for cross-machine)
 
 ```bash
-maw loop             # ดู loops ทั้งหมด
-maw loop add '{...}' # สร้าง loop ใหม่
-# ห้ามใช้ CronCreate — ไม่ persist ข้าม session
+maw federation status    # ดู topology + peer reachability
+maw federation sync      # sync agents ข้าม peers
+/federation-talk status  # Omega skill — health check
+/federation-talk health  # รัน federation-health.sh
 ```
+
+### Cross-Node (เมื่อต้องการ federate)
+
+Pattern: **The Pair** (2 nodes) — เหมาะสำหรับ Omega + tham คนละเครื่อง
+
+```bash
+# เพิ่ม peer ใน ~/.config/maw/maw.config.json:
+"namedPeers": [{"name": "other-node", "url": "http://PEER_IP:3457"}]
+
+# ส่งข้อความข้ามเครื่อง:
+maw hey other-node:tham "message from omega"
+```
+
+### Federation Config Rules
+
+| Rule | ค่าที่ถูก | ห้าม |
+|------|----------|------|
+| bind address | `"bind": "0.0.0.0"` | `"host": "0.0.0.0"` |
+| peer list | `"namedPeers": [{"name":"...", "url":"..."}]` | ใส่ใน `peers: [...]` |
+| token | env var หรือ `~/.config/maw/` | commit ลง git |
+| node names | unique ทุก node | ชื่อซ้ำ |
+
+### Health Monitoring
+
+```bash
+# Manual check
+maw federation status
+
+# Auto alert (hook — debounce 30 min)
+bash .claude/hooks/federation-health.sh
+```
+
+Hook `federation-health.sh` รันตรวจ offline peers แล้ว `maw hey tham "alert: ..."` อัตโนมัติ
 
 ## MCP Server — Oracle-v2
 
