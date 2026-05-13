@@ -447,11 +447,17 @@ bash scripts/ollama-start.sh [model-name]
 
 LiteLLM proxy แปลง Anthropic API ↔ Ollama (port 8082):
 
-```bash
-# เปิด Ollama + LiteLLM proxy
-bash scripts/ollama-start.sh qwen2.5-coder:7b
+**WSL2 network note**: Ollama รันบน Windows → API ที่ `http://<WIN_IP>:11434` (ไม่ใช่ localhost)
+- Windows host IP detect อัตโนมัติจาก `/etc/resolv.conf` nameserver
+- ต้อง set `OLLAMA_HOST=0.0.0.0:11434` ก่อน start (scripts ทำให้อัตโนมัติ)
+- Windows Firewall rule "Ollama WSL2 Access" ต้องมี (สร้างแล้ว)
 
-# ใช้ Claude Code กับ Ollama
+```bash
+# เปิด Ollama + LiteLLM proxy (ใช้ model ที่พอดีกับ RAM ที่มี)
+bash scripts/ollama-start.sh qwen2.5:1.5b-instruct   # ~1GB RAM — recommended
+bash scripts/ollama-start.sh qwen2.5-coder:7b         # ~4.3GB RAM — ต้องมี RAM พอ
+
+# ใช้ Claude Code กับ Ollama (OpenAI chat completions format via LiteLLM)
 export ANTHROPIC_API_KEY=ollama
 export ANTHROPIC_BASE_URL=http://localhost:8082
 claude   # ← Claude Code จะ route ไปที่ Ollama แทน

@@ -5,7 +5,9 @@
 set -euo pipefail
 
 OLLAMA_EXE="${OLLAMA_EXE:-/mnt/d/ollamaapp/ollama.exe}"
-OLLAMA_API="http://localhost:11434"
+# Windows host IP for WSL2 → Windows networking
+WIN_IP=$(cat /etc/resolv.conf 2>/dev/null | grep nameserver | awk '{print $2}' | head -1)
+OLLAMA_API="http://${WIN_IP:-127.0.0.1}:11434"
 MODEL="${1:-qwen2.5-coder:7b}"
 LITELLM_PORT="${LITELLM_PORT:-8082}"
 
@@ -20,7 +22,9 @@ else
     log "ERROR: $OLLAMA_EXE not found"
     exit 1
   fi
-  nohup "$OLLAMA_EXE" serve > /tmp/ollama.log 2>&1 &
+  # Start Ollama on Windows via PowerShell (Windows exe — use PS, not nohup)
+  WIN_EXE=$(wslpath -w "$OLLAMA_EXE" 2>/dev/null || echo 'D:\ollamaapp\ollama.exe')
+  powershell.exe -Command "\$env:OLLAMA_HOST='0.0.0.0:11434'; Start-Process '$WIN_EXE' -ArgumentList 'serve' -WindowStyle Hidden" 2>/dev/null &
   for i in $(seq 1 20); do
     sleep 1
     if curl -sf "$OLLAMA_API/api/tags" >/dev/null 2>&1; then
@@ -28,7 +32,8 @@ else
       break
     fi
     if [[ $i -eq 20 ]]; then
-      log "ERROR: Ollama did not start after 20s — check /tmp/ollama.log"
+      log "ERROR: Ollama did not start after 20s"
+      log "Manual fix: open Windows, run 'set OLLAMA_HOST=0.0.0.0:11434 && ollama serve'"
       exit 1
     fi
   done

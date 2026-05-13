@@ -7,7 +7,9 @@ set -euo pipefail
 PROVIDERS_CONFIG="${AI_PROVIDERS_CONFIG:-$HOME/.config/ai-providers/providers.json}"
 STATE_FILE="/tmp/omega-ai-provider-state.json"
 OLLAMA_EXE="/mnt/d/ollamaapp/ollama.exe"
-OLLAMA_API="http://localhost:11434"
+# Dynamically detect Windows host IP for WSL2 → Windows networking
+WIN_IP=$(cat /etc/resolv.conf 2>/dev/null | grep nameserver | awk '{print $2}' | head -1)
+OLLAMA_API="http://${WIN_IP:-127.0.0.1}:11434"
 LITELLM_PORT="${LITELLM_PORT:-8082}"
 LITELLM_PID_FILE="/tmp/omega-litellm.pid"
 
@@ -104,17 +106,19 @@ ollama_start() {
     log "ERROR: Ollama exe not found at $OLLAMA_EXE"
     return 1
   fi
-  # Start Ollama (Windows exe via WSL2)
-  nohup "$OLLAMA_EXE" serve > /tmp/ollama.log 2>&1 &
-  log "Waiting for Ollama to start..."
-  for i in $(seq 1 15); do
+  # Start Ollama as Windows process via PowerShell (nohup doesn't work for Windows exes in WSL2)
+  local WIN_EXE
+  WIN_EXE=$(wslpath -w "$OLLAMA_EXE" 2>/dev/null || echo 'D:\ollamaapp\ollama.exe')
+  powershell.exe -Command "\$env:OLLAMA_HOST='0.0.0.0:11434'; Start-Process '$WIN_EXE' -ArgumentList 'serve' -WindowStyle Hidden" 2>/dev/null &
+  log "Waiting for Ollama to start at $OLLAMA_API..."
+  for i in $(seq 1 20); do
     sleep 1
     if ollama_running; then
       log "Ollama ready"
       return 0
     fi
   done
-  log "ERROR: Ollama did not start within 15s"
+  log "ERROR: Ollama did not start within 20s — OLLAMA_HOST must be 0.0.0.0:11434"
   return 1
 }
 
