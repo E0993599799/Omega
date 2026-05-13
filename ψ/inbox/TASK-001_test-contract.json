@@ -1,0 +1,11 @@
+{
+  "task_id": "TASK-001",
+  "from": "tham",
+  "to": "omega",
+  "what": "ทดสอบรับ task contract จาก ธาม",
+  "how": "อ่านไฟล์นี้ และเขียน proof ลง ψ/outbox/",
+  "proof": "ψ/outbox/PROOF-TASK-001_complete.json มีอยู่",
+  "rollback": "ลบไฟล์ proof ออก",
+  "risk": "low",
+  "created_at": "2026-05-13T00:00:00Z"
+}

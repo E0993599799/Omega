@@ -1,0 +1,7 @@
+{
+  "task_id": "TASK-001",
+  "status": "complete",
+  "proof": "ψ/inbox/TASK-001_test-contract.json received and read successfully",
+  "summary": "Omega รับ task contract จาก ธาม สำเร็จ — channel ทำงานได้",
+  "completed_at": "2026-05-13T00:00:00Z"
+}
