@@ -151,6 +151,7 @@ maw talk-to tham "cc: TASK-XXX FAILED — rolling back [details]"
 |------|-------|--------|
 | `statusline.sh` | StatusLine | แสดง `Ω {%} {used}k/{max}k • {time} • {model} on {branch}` |
 | `force-rrr-at-80.sh` | PostToolUse | เตือน 70%, บังคับ /rrr ที่ 80% context |
+| `quota-detect.sh` | PostToolUse | detect 429/rate-limit → rotate AI provider อัตโนมัติ |
 | `cc-tham-on-stop.sh` | Stop | cc ธาม อัตโนมัติ + เตือน /forward (debounce 60s) |
 
 Hooks อยู่ที่ `.claude/hooks/` — ใช้ python3 แทน jq (jq ไม่มีใน env นี้)
@@ -165,6 +166,7 @@ Omega custom skills:
 |-------|---------|--------|
 | gate | `/gate` | validate task contract + GO/NO-GO |
 | proof | `/proof` | verify งาน + เขียน proof JSON |
+| ai-status | `/ai-status` | ดู/เปลี่ยน AI provider, เปิด Ollama |
 
 Standard skills ที่ใช้บ่อย: `/recap`, `/rrr`, `/forward`, `/talk-to`
 
@@ -383,3 +385,91 @@ forge todo.md
 - **No evidence = Not complete** — ต้องมี log + summary + proof JSON
 - **One task at a time** — ห้าม claim ซ้อน
 - Current SFSR queue: **SFSR 23–28** (23=Chat UI, 24=Evidence, 25=Memory WB, 26=Agent Spawn, 27=E2E, 28=Golden Lock)
+
+## Multi-Provider AI Switching
+
+Omega รองรับ AI provider หลายตัว — switch อัตโนมัติเมื่อ quota หมด
+
+### Provider Priority Order
+
+| Priority | Name | Type | Model | Fallback? |
+|----------|------|------|-------|-----------|
+| 01 | claude-primary | anthropic | claude-sonnet-4-6 | — |
+| 02 | claude-secondary | anthropic | claude-sonnet-4-6 | ✓ |
+| 03 | openai-pro-1 | openai | gpt-4o | ✓ |
+| 04 | openai-pro-2 | openai | gpt-4o | ✓ |
+| 05 | gemini-pro | gemini | gemini-1.5-pro | ✓ |
+| 06 | gemini-free | gemini | gemini-1.5-flash | ✓ |
+| 99 | ollama-local | ollama | qwen2.5-coder:7b | local final |
+
+### Config
+
+- **Providers**: `~/.config/ai-providers/providers.json` — API keys ที่นี่ (ห้าม commit)
+- **Active state**: `/tmp/omega-ai-provider-state.json`
+- **Switch script**: `scripts/ai-switch.sh`
+- **Ollama start script**: `scripts/ollama-start.sh`
+- **Auto-detect hook**: `.claude/hooks/quota-detect.sh` (runs on every tool use)
+
+### Ollama Local AI — Installed Models
+
+Location: `D:\ollamaapp` (`/mnt/d/ollamaapp/`)
+
+| Model | Use case |
+|-------|---------|
+| `qwen2.5-coder:7b` | code tasks (default) |
+| `qwen3.5:latest` | general reasoning |
+| `qwen2.5:1.5b-instruct` | fast lightweight |
+| `qwen2.5:0.5b-instruct` | ultra-fast |
+| `smollm2:360m` | minimal footprint |
+
+### Usage
+
+```bash
+# ดูสถานะ provider ทั้งหมด
+bash scripts/ai-switch.sh status
+
+# เปลี่ยน provider
+bash scripts/ai-switch.sh use claude-secondary
+bash scripts/ai-switch.sh use openai-pro-1
+bash scripts/ai-switch.sh use ollama-local  # starts Ollama + LiteLLM proxy
+
+# Rotate ไป provider ถัดไป
+bash scripts/ai-switch.sh next
+
+# Export env vars สำหรับ Claude Code
+eval "$(bash scripts/ai-switch.sh env)"
+
+# เปิด Ollama standalone
+bash scripts/ollama-start.sh [model-name]
+```
+
+### Ollama + Claude Code Integration
+
+LiteLLM proxy แปลง Anthropic API ↔ Ollama (port 8082):
+
+```bash
+# เปิด Ollama + LiteLLM proxy
+bash scripts/ollama-start.sh qwen2.5-coder:7b
+
+# ใช้ Claude Code กับ Ollama
+export ANTHROPIC_API_KEY=ollama
+export ANTHROPIC_BASE_URL=http://localhost:8082
+claude   # ← Claude Code จะ route ไปที่ Ollama แทน
+```
+
+### Auto-Switch (quota-detect hook)
+
+เมื่อเกิด rate-limit / 429 / quota exceeded ใน tool response:
+1. `quota-detect.sh` detect signal
+2. เรียก `ai-switch.sh next` อัตโนมัติ (debounce 5 min)
+3. cc ธาม: "quota hit on X, rotated to Y"
+
+### Adding API Keys
+
+แก้ไข `~/.config/ai-providers/providers.json` — ใส่ API key ใน `api_key` field และ set `enabled: true`:
+
+```json
+{"name": "claude-secondary", "api_key": "sk-ant-...", "enabled": true}
+```
+
+ห้าม commit `~/.config/ai-providers/providers.json` ลง git เด็ดขาด

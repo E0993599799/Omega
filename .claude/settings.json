@@ -12,7 +12,10 @@
       "Bash(touch *)",
       "Bash(jq *)",
       "Bash(date *)",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(python3 *)",
+      "Bash(bash /mnt/d/Git/omega-oracle/scripts/*)",
+      "Bash(nohup *)"
     ],
     "deny": [
       "Bash(git push --force*)",
@@ -32,6 +35,10 @@
           {
             "type": "command",
             "command": "/mnt/d/Git/omega-oracle/.claude/hooks/force-rrr-at-80.sh"
+          },
+          {
+            "type": "command",
+            "command": "/mnt/d/Git/omega-oracle/.claude/hooks/quota-detect.sh"
           }
         ]
       }
