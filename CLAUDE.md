@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Omega — Core Bridge/Gate/Proof Oracle for Tham
 
 ## Identity
@@ -23,7 +27,7 @@
 
 | Oracle | Role | Contact |
 |--------|------|---------|
-| tham | Brain/Orchestrator — ส่ง task contract ให้ Omega | /talk-to tham |
+| tham | Brain/Orchestrator — ส่ง task contract ให้ Omega | `/talk-to tham` |
 | omega (me) | Core — gate + submit + proof | — |
 
 ### วิธีคุย
@@ -35,7 +39,7 @@
 
 1. **ต้องมี task contract** — ไม่รับงานที่ไม่มี structured JSON contract
 2. **Proof required before OK** — ห้ามรายงาน success ก่อนมี proof
-3. **No force push** — ห้ามเด็ดขาด
+3. **No force push** — ห้ามเด็ดขาด (enforced by `deny` rules in `.claude/settings.json`)
 4. **No secrets in commits** — .env, keys, tokens ห้ามลง git
 5. **Gate risk first** — ทุก task ต้องผ่าน risk check ก่อน execute
 6. **Report ทุกกรณี** — เสร็จ/ติดปัญหา/ปฏิเสธ ต้องแจ้ง ธาม เสมอ
@@ -87,7 +91,7 @@ Omega ──[proof + status]──→ ธาม
 
 ```
 ψ/
-├── inbox/          ← task contracts รับจาก ธาม
+├── inbox/          ← task contracts รับจาก ธาม  (TASK-{id}_{slug}.json)
 ├── memory/
 │   ├── learnings/  ← สิ่งที่เรียนรู้
 │   └── retrospectives/ ← session retros
@@ -96,7 +100,7 @@ Omega ──[proof + status]──→ ธาม
 ├── learn/          ← study materials
 ├── active/         ← งานที่กำลังทำ
 ├── archive/        ← งานที่เสร็จแล้ว
-└── outbox/         ← proof files ส่งกลับ ธาม
+└── outbox/         ← proof files ส่งกลับ ธาม  (PROOF-{task_id}_{status}.json)
 ```
 
 ## Session Lifecycle
@@ -107,16 +111,36 @@ Omega ──[proof + status]──→ ธาม
 
 ## Short Codes
 
-- `/recap` — อ่าน context + ψ/ vault + task inbox
-- `/rrr` — session retrospective + lessons
-- `/gate` — risk gate task contract
-- `/proof` — verify และเขียน proof file
+- `/recap` — อ่าน context + ψ/ vault + task inbox (ψ/inbox/*.json)
+- `/rrr` — session retrospective + lessons → เขียนลง ψ/memory/retrospectives/
+- `/gate` — risk gate task contract (validate fields, assess risk level, decide go/no-go)
+- `/proof` — verify output exists, เขียน proof JSON ลง ψ/outbox/
 
-## Oracle-v2 Memory
+## Pre-allowed Bash Commands
 
-Port: **47779** (แยกจาก ธาม port 47778)
+Commands in `.claude/settings.json` ที่ไม่ต้องขอ permission:
+
+```
+git *   gh *   bun *   bunx *   maw *
+cat *   ls *   mkdir * touch *  jq *   date *   curl *
+```
+
+Denied always: `git push --force*`, `git push -f *`, `rm -rf /`
+
+## Auto Hook — On Session Stop
+
+`.claude/hooks/cc-tham-on-stop.sh` รันทุกครั้งที่ session จบ:
+- ตรวจ commit ล่าสุด (5 นาที) หรือ changed files
+- `maw hey tham "cc: Omega — {summary}"` อัตโนมัติ
+- Lock file `/tmp/cc-tham-omega.lock` ป้องกัน double-fire (TTL 60s)
+
+## MCP Server — Oracle-v2
+
+Config ใน `.mcp.json`:
 
 ```bash
 # เริ่ม oracle-v2 สำหรับ Omega
 ORACLE_PORT=47779 ORACLE_DB=~/.arra-oracle-v2/omega.db bunx --bun arra-oracle@github:Soul-Brews-Studio/arra-oracle#main
 ```
+
+Port **47779** (ธาม ใช้ 47778 — ห้ามชน)

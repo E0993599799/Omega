@@ -1,0 +1,11 @@
+{
+  "task_id": "TASK-002",
+  "from": "tham",
+  "to": "omega",
+  "what": "สร้าง ψ vault directories ที่ยังขาดอยู่ทั้งหมด",
+  "how": "mkdir ψ/memory/learnings ψ/memory/retrospectives ψ/writing ψ/lab ψ/learn ψ/active ψ/archive และ seed README.md แต่ละ dir",
+  "proof": "find ψ/ -type d แสดงครบทุก dir ตาม CLAUDE.md Brain Structure",
+  "rollback": "rm -rf ψ/memory ψ/writing ψ/lab ψ/learn ψ/active ψ/archive",
+  "risk": "low",
+  "created_at": "2026-05-13T08:00:00Z"
+}
