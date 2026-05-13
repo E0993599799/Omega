@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(bun *)",
+      "Bash(bunx *)",
+      "Bash(maw *)",
+      "Bash(cat *)",
+      "Bash(ls *)",
+      "Bash(mkdir *)",
+      "Bash(touch *)",
+      "Bash(jq *)",
+      "Bash(date *)",
+      "Bash(curl *)"
+    ],
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(rm -rf /)",
+      "Bash(git push -f *)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/mnt/d/Git/omega-oracle/.claude/hooks/cc-tham-on-stop.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
