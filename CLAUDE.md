@@ -43,6 +43,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 4. **No secrets in commits** — .env, keys, tokens ห้ามลง git
 5. **Gate risk first** — ทุก task ต้องผ่าน risk check ก่อน execute
 6. **Report ทุกกรณี** — เสร็จ/ติดปัญหา/ปฏิเสธ ต้องแจ้ง ธาม เสมอ
+7. **Handoff ACK** — รับ task contract → validate format ภายใน 30 วินาที → ACK หรือ reject ทันที
+8. **5-state CC** — cc ธาม ทุก state change (ดู CC Pattern ด้านล่าง)
+9. **Context check** — ถ้า context ≥ 70% ห้ามรับ task ใหม่ → /rrr + /forward ก่อน
 
 ## Task Contract Format (รับจาก ธาม)
 
@@ -92,13 +95,16 @@ Omega ──[proof + status]──→ ธาม
 ```
 ψ/
 ├── inbox/          ← task contracts รับจาก ธาม  (TASK-{id}_{slug}.json)
+├── handoff/        ← context ที่ ธาม ส่งมาสำหรับ session ถัดไป
+├── escalations/    ← tasks ที่ fail gate / blocked รอ ธาม ตัดสินใจ
 ├── memory/
 │   ├── learnings/  ← สิ่งที่เรียนรู้
-│   └── retrospectives/ ← session retros
+│   ├── retrospectives/ ← session retros
+│   └── resonance/  ← ψ/memory/resonance/omega.md (soul identity — inherited on bud)
 ├── writing/        ← drafts
 ├── lab/            ← ทดลอง
 ├── learn/          ← study materials
-├── active/         ← งานที่กำลังทำ
+├── active/         ← งานที่กำลังทำ  (gitignored)
 ├── archive/        ← งานที่เสร็จแล้ว
 └── outbox/         ← proof files ส่งกลับ ธาม  (PROOF-{task_id}_{status}.json)
 ```
@@ -106,15 +112,38 @@ Omega ──[proof + status]──→ ธาม
 ## Session Lifecycle
 
 ```
-/recap → รับ task contract → gate → execute → proof → report → /rrr → commit → push
+/recap (อ่าน handoff ก่อน) → รับ task contract → ACK ธาม → gate → execute → proof → report → /rrr → /forward → commit → push
 ```
 
 ## Short Codes
 
-- `/recap` — อ่าน context + ψ/ vault + task inbox (ψ/inbox/*.json)
-- `/rrr` — session retrospective + lessons → เขียนลง ψ/memory/retrospectives/
-- `/gate` — risk gate task contract (validate fields, assess risk level, decide go/no-go)
-- `/proof` — verify output exists, เขียน proof JSON ลง ψ/outbox/
+- `/recap` — อ่าน context + ψ/handoff/ + ψ/inbox/*.json
+- `/rrr` — session retrospective + lessons → ψ/memory/retrospectives/
+- `/forward` — สร้าง handoff สำหรับ session ถัดไป → ψ/handoff/
+- `/gate` — risk gate task contract (validate, GO/NO-GO, escalate)
+- `/proof` — verify artifact, เขียน proof JSON → ψ/outbox/
+- `/federation-talk` — cross-node messaging + health check
+
+## 5-State CC Pattern (THE LAW #8)
+
+cc ธาม ทุก state change — ห้ามรอถึง complete:
+
+```bash
+# 1. RECEIVED
+maw talk-to tham "cc: TASK-XXX received — gating..."
+
+# 2. STARTED
+maw talk-to tham "cc: TASK-XXX GO — executing"
+
+# 3. BLOCKED (ถ้าติดปัญหา)
+maw talk-to tham "cc: TASK-XXX BLOCKED — [reason], see ψ/escalations/"
+
+# 4. COMPLETE
+maw talk-to tham "cc: TASK-XXX proof ready — ψ/outbox/PROOF-TASK-XXX_complete.json"
+
+# 5. FAILED
+maw talk-to tham "cc: TASK-XXX FAILED — rolling back [details]"
+```
 
 ## Hooks
 
@@ -241,9 +270,9 @@ bash .claude/hooks/federation-health.sh
 
 Hook `federation-health.sh` รันตรวจ offline peers แล้ว `maw hey tham "alert: ..."` อัตโนมัติ
 
-## MCP Server — Oracle-v2
+## Oracle-v2 MCP — arra-oracle Tools
 
-Config ใน `.mcp.json`:
+Config ใน `.mcp.json` | Port: **47779** | DB: `~/.arra-oracle-v2/omega.db`
 
 ```bash
 # เริ่ม oracle-v2 สำหรับ Omega
@@ -251,6 +280,55 @@ ORACLE_PORT=47779 ORACLE_DB=~/.arra-oracle-v2/omega.db bunx --bun arra-oracle@gi
 ```
 
 Port **47779** (ธาม ใช้ 47778 — ห้ามชน)
+
+### arra-oracle 22 Tools — Usage Pattern
+
+| Category | Tools | เมื่อใช้ |
+|----------|-------|---------|
+| Knowledge | `arra_search`, `arra_read`, `arra_list`, `arra_concepts`, `arra_stats` | ค้นหาก่อนเรียนรู้เสมอ |
+| Learn | `arra_learn`, `arra_supersede` | บันทึก pattern / ข้อมูลใหม่ (ห้ามลบ → supersede แทน) |
+| Discussion | `arra_thread`, `arra_threads`, `arra_thread_read`, `arra_thread_update` | multi-turn conversation log |
+| Trace | `arra_trace`, `arra_trace_list`, `arra_trace_get`, `arra_trace_link`, `arra_trace_unlink`, `arra_trace_chain` | log discovery session + เชื่อม traces |
+| Handoff | `arra_handoff`, `arra_inbox` | บันทึก/อ่าน session context ข้าม session |
+
+**Pattern**: Search → Learn → Trace → Handoff
+
+```
+Session start: arra_inbox()              ← อ่าน pending handoffs
+During work:   arra_search() → arra_learn() → arra_trace()
+Session end:   arra_handoff()            ← บันทึก context สำหรับครั้งถัดไป
+```
+
+## Graph Oracle
+
+Port: **47792** | API: `http://localhost:47792`
+
+```bash
+# Harvest Omega's knowledge into graph
+curl -X POST http://localhost:47792/api/graph/harvest
+
+# Search cross-oracle knowledge
+curl "http://localhost:47792/api/graph/search?q=task+contract"
+
+# Find knowledge bridges between Omega and other oracles
+curl http://localhost:47792/api/graph/bridges
+```
+
+Graph Oracle ค้นหา Omega ผ่าน `/api/health` ของ arra-oracle — ถ้า oracle-v2 running จะ auto-discover
+
+## Budding (สร้าง Oracle ใหม่จาก Omega)
+
+```bash
+maw bud <oracle-name> --from omega --org <org-name>
+```
+
+**Soul-sync ที่ inherit** (จาก `ψ/memory/`):
+- `learnings/`, `retrospectives/`, `resonance/` ← **core identity**
+- `traces/`, `collaborations/`, `writing/`, `learn/`
+
+**ไม่ inherit**: inbox, outbox, plans, active tasks, credentials
+
+สิ่งสำคัญที่สุดที่ child จะได้คือ `ψ/memory/resonance/omega.md` — เป็น philosophical seed
 
 ## Forge Queue Integration
 
