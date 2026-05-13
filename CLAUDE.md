@@ -201,3 +201,57 @@ ORACLE_PORT=47779 ORACLE_DB=~/.arra-oracle-v2/omega.db bunx --bun arra-oracle@gi
 ```
 
 Port **47779** (ธาม ใช้ 47778 — ห้ามชน)
+
+## Forge Queue Integration
+
+Omega เป็น bridge ระหว่าง **ธาม Oracle** และ **Marcuzx Forge Omega queue**
+
+### Canonical Paths (Forge)
+
+| Path | ความหมาย |
+|------|----------|
+| `/mnt/d/01 Main Work/Boots/Agentic AI/mission-control/todo.md` | Forge canonical queue |
+| `/mnt/d/01 Main Work/Boots/Agentic AI/mission-control/tools/logs/` | Forge evidence logs |
+| `/mnt/d/Obsidian/Memory/Marcuz/Projects/Marcuzx Forge V3/03 - Agent Memory/Tham/Tham - Master Memory.md` | Tham Master Memory (Obsidian) |
+
+### Forge Execution Contract (ทุก task ต้องมี)
+
+```text
+TASK_NAME=
+ACTION_TAKEN=
+FILES_CHANGED=
+LOG_PATH=
+RESULT=OK|FAILED
+ROOT_CAUSE=
+NEXT_ACTION=
+CLASSIFICATION=TRANSIENT|DETERMINISTIC
+BACKUP_DIR=
+```
+
+### Scripts
+
+```bash
+# Claim 1 task จาก Forge queue → สร้าง task contract ใน ψ/inbox/
+bash .claude/hooks/forge-queue-claim.sh
+
+# เขียน evidence กลับ Forge logs + Omega outbox
+bash .claude/hooks/forge-proof-write.sh <task_id> <OK|FAILED> "<summary>" "<files>"
+```
+
+### Flow — Forge Queue → Omega → Proof
+
+```
+forge todo.md
+  → forge-queue-claim.sh → ψ/inbox/TASK-forge-*.json
+  → Omega อ่าน contract → gate → execute
+  → forge-proof-write.sh → tools/logs/*.summary.json + ψ/outbox/PROOF-*.json
+  → update todo.md [ ] → [x]
+  → maw hey tham "cc: Omega — SFSR-NN complete"
+```
+
+### Forge Rules (สืบทอดจาก Forge Omega)
+
+- **No memory read = No execution** — อ่าน Tham Master Memory ก่อนทุก task
+- **No evidence = Not complete** — ต้องมี log + summary + proof JSON
+- **One task at a time** — ห้าม claim ซ้อน
+- Current SFSR queue: **SFSR 23–28** (23=Chat UI, 24=Evidence, 25=Memory WB, 26=Agent Spawn, 27=E2E, 28=Golden Lock)

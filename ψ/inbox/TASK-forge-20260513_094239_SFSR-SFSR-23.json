@@ -1,0 +1,17 @@
+{
+  "task_id": "forge-20260513_094239",
+  "forge_task": "SFSR-SFSR-23",
+  "from": "forge-queue",
+  "to": "omega",
+  "what": "SFSR 23: Connect UI to real command endpoint",
+  "how": "ทำตาม Forge execution contract — read memory → execute → evidence → writeback",
+  "proof": "tools/logs/forge_omega_20260513_094239.summary.json exists + RESULT=OK",
+  "rollback": "ไม่มี state change ก่อนจะมี evidence — safe to retry",
+  "risk": "medium",
+  "forge_paths": {
+    "todo": "/mnt/d/01 Main Work/Boots/Agentic AI/mission-control/todo.md",
+    "logs": "/mnt/d/01 Main Work/Boots/Agentic AI/mission-control/tools/logs",
+    "memory": "/mnt/d/Obsidian/Memory/Marcuz/Projects/Marcuzx Forge V3/03 - Agent Memory/Tham/Tham - Master Memory.md"
+  },
+  "created_at": "2026-05-13T02:42:39Z"
+}
