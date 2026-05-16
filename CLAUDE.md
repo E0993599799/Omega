@@ -31,9 +31,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | omega (me) | Core — gate + submit + proof | — |
 
 ### วิธีคุย
-- **Primary**: `/talk-to tham "message"`
-- **Fallback**: `maw hey tham "message"`
-- **cc ธาม ทุกครั้ง** หลังทำงานเสร็จหรือติดปัญหา
+- **Primary**: `maw talk-to tham "message"` — มี audit trail
+- **Fallback**: `maw hey tham "message"` — ถ้า MCP ล่ม
+- **cc ธาม ทุกครั้ง** หลังทำงานเสร็จหรือติดปัญหา (ใช้ primary ก่อนเสมอ)
 
 ## Core Operating Rules (THE LAW)
 
@@ -80,40 +80,55 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 ธาม ──[task contract]──→ Omega
                             │
-                    1. validate contract
-                    2. risk gate
-                    3. create GitHub issue (inbox)
+                    1. validate contract (format check)
+                    2. risk gate → GO / NO-GO / ESCALATE
+                    3. copy contract → ψ/active/   (track execution)
                     4. execute / route
-                    5. write proof file
-                    6. report → ธาม
+                    5. write proof → ψ/outbox/
+                    6. archive contract → ψ/archive/
+                    7. report → ธาม
                             │
 Omega ──[proof + status]──→ ธาม
 ```
+
+**Forge Queue path** (ธาม → forge-queue-claim.sh → ψ/inbox/ → same flow above)
 
 ## Brain Structure
 
 ```
 ψ/
 ├── inbox/          ← task contracts รับจาก ธาม  (TASK-{id}_{slug}.json)
-├── handoff/        ← context ที่ ธาม ส่งมาสำหรับ session ถัดไป
-├── escalations/    ← tasks ที่ fail gate / blocked รอ ธาม ตัดสินใจ
+│                     pending — ยังไม่ได้ gate
+├── active/         ← contracts ที่กำลัง execute  (gitignored — ไม่ track ใน git)
+│                     copy มาจาก inbox เมื่อ gate = GO
+├── archive/        ← contracts เสร็จแล้ว  (moved จาก active หลัง proof)
+├── outbox/         ← proof files ส่งกลับ ธาม  (PROOF-{task_id}_{status}.json)
+├── escalations/    ← tasks fail gate / blocked  (รอ ธาม confirm)
+│                     unblock: ธาม สร้าง ψ/inbox/TASK-XXX_confirmed.json
+├── handoff/        ← context ข้าม session  (HANDOFF-{date}_{slug}.md)
+│                     primary: /forward skill → file-based
+│                     secondary: arra_handoff() MCP tool
 ├── memory/
 │   ├── learnings/  ← สิ่งที่เรียนรู้
-│   ├── retrospectives/ ← session retros
+│   ├── retrospectives/ ← session retros (/rrr)
 │   └── resonance/  ← ψ/memory/resonance/omega.md (soul identity — inherited on bud)
 ├── writing/        ← drafts
 ├── lab/            ← ทดลอง
-├── learn/          ← study materials
-├── active/         ← งานที่กำลังทำ  (gitignored)
-├── archive/        ← งานที่เสร็จแล้ว
-└── outbox/         ← proof files ส่งกลับ ธาม  (PROOF-{task_id}_{status}.json)
+└── learn/          ← study materials
 ```
+
+**Task lifecycle**: inbox → (gate GO) → active → (proof) → archive + outbox
 
 ## Session Lifecycle
 
 ```
-/recap (อ่าน handoff ก่อน) → รับ task contract → ACK ธาม → gate → execute → proof → report → /rrr → /forward → commit → push
+/recap → อ่าน ψ/handoff/ + ψ/inbox/ → ACK ธาม
+       → /gate TASK-XXX → copy to ψ/active/ → execute
+       → /proof TASK-XXX → archive to ψ/archive/ → report
+       → commit (ระหว่าง session ได้) → /rrr → /forward → push
 ```
+
+**Note**: commit เกิดได้ตลอด session — ไม่ต้องรอถึง /rrr
 
 ## Short Codes
 
@@ -126,24 +141,27 @@ Omega ──[proof + status]──→ ธาม
 
 ## 5-State CC Pattern (THE LAW #8)
 
-cc ธาม ทุก state change — ห้ามรอถึง complete:
+cc ธาม ทุก state change — ห้ามรอถึง complete  
+**Primary**: `maw talk-to tham "..."` | **Fallback**: `maw hey tham "..."` ถ้า MCP ล่ม
 
 ```bash
-# 1. RECEIVED
+# 1. RECEIVED (ทันทีที่รับ contract — ก่อน gate)
 maw talk-to tham "cc: TASK-XXX received — gating..."
 
-# 2. STARTED
+# 2. STARTED (หลัง gate = GO — ก่อน execute)
 maw talk-to tham "cc: TASK-XXX GO — executing"
 
-# 3. BLOCKED (ถ้าติดปัญหา)
+# 3. BLOCKED (ถ้าติดปัญหาระหว่าง execute)
 maw talk-to tham "cc: TASK-XXX BLOCKED — [reason], see ψ/escalations/"
 
-# 4. COMPLETE
+# 4. COMPLETE (หลัง proof เขียนเสร็จ)
 maw talk-to tham "cc: TASK-XXX proof ready — ψ/outbox/PROOF-TASK-XXX_complete.json"
 
-# 5. FAILED
+# 5. FAILED (ถ้า task ล้มเหลว)
 maw talk-to tham "cc: TASK-XXX FAILED — rolling back [details]"
 ```
+
+**Note**: state 1 (RECEIVED) และ 2 (STARTED) เป็น 2 cc แยกกัน — gate skill ส่งทั้งคู่
 
 ## Hooks
 

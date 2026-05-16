@@ -6,12 +6,12 @@ trigger: /proof
 
 # /proof — Verify & Write Proof
 
-**Goal**: ตรวจหลักฐานว่างานเสร็จจริง แล้วเขียน proof JSON ลง ψ/outbox/
+**Goal**: ตรวจหลักฐานว่างานเสร็จจริง แล้วเขียน proof JSON ลง ψ/outbox/ และ archive contract
 
 ## Usage
 
 ```
-/proof                        # proof สำหรับ task ที่ active อยู่
+/proof                        # proof สำหรับ task ที่ active อยู่ (ดูจาก ψ/active/)
 /proof TASK-XXX               # proof สำหรับ task ที่ระบุ (default: complete)
 /proof TASK-XXX fail          # proof สถานะ fail
 /proof TASK-XXX blocked       # proof สถานะ blocked
@@ -19,10 +19,10 @@ trigger: /proof
 
 ## Argument Handling
 
-- **ไม่มี argument** → ใช้ Bash tool: `ls ψ/active/` หาไฟล์ที่กำลัง active
-- **TASK-XXX** → ใช้ Bash tool: `find ψ/inbox/ -name "TASK-XXX*"` อ่าน contract
+- **ไม่มี argument** → ใช้ Bash: `ls ψ/active/*.json` หาไฟล์ที่กำลัง active
+- **TASK-XXX** → ใช้ Bash: `find ψ/inbox/ ψ/active/ -name "TASK-XXX*"` อ่าน contract
 - **TASK-XXX fail/blocked** → ใช้ status ที่ระบุ
-- **ไม่พบ task** → แสดง list ψ/inbox/ ให้ user เลือก
+- **ไม่พบ task** → แสดง list ψ/inbox/ + ψ/active/ ให้เลือก
 
 ## Verification Decision Tree
 
@@ -40,7 +40,7 @@ trigger: /proof
 
 ## Verification Checklist
 
-1. ใช้ Read tool อ่าน `ψ/inbox/TASK-XXX*.json` — ดู `proof` field
+1. ใช้ Read tool อ่าน `ψ/inbox/TASK-XXX*.json` หรือ `ψ/active/TASK-XXX*.json` — ดู `proof` field
 2. ตรวจ artifact ตาม decision tree ด้านบน
 3. ตรวจ rollback path ยังเป็นไปได้ไหม
 4. ตรวจว่าไม่มี secret รั่วใน output
@@ -61,6 +61,22 @@ trigger: /proof
 }
 ```
 
+## Steps
+
+1. Parse argument → locate task (ดู Argument Handling)
+2. ใช้ Read tool อ่าน contract — ดู `proof` field
+3. ตรวจ artifact ตาม decision tree
+4. ตรวจ rollback path
+5. ใช้ Write tool เขียน proof JSON ลง `ψ/outbox/`
+6. **Archive contract** — ย้าย contract ออกจาก inbox/active ไป archive:
+   ```bash
+   mv ψ/active/TASK-XXX*.json ψ/archive/ 2>/dev/null || true
+   mv ψ/inbox/TASK-XXX*.json ψ/archive/ 2>/dev/null || true
+   ```
+7. แสดง proof content + verification summary
+8. cc ธาม (COMPLETE): `maw talk-to tham "cc: TASK-XXX proof ready — ψ/outbox/PROOF-TASK-XXX_complete.json"`
+   - ถ้า MCP ล่ม: `maw hey tham "cc: TASK-XXX proof ready — [status]"`
+
 ## Example Output
 
 ```
@@ -69,16 +85,7 @@ trigger: /proof
 **Artifact verified**: ψ/outbox/PROOF-TASK-XXX_complete.json exists
 **Git evidence**: abc1234 feat: TASK-XXX — [description]
 **Rollback**: ยังทำได้ (rm ψ/outbox/PROOF-TASK-XXX_complete.json)
+**Archived**: ψ/archive/TASK-XXX_slug.json
 
 Proof written to: ψ/outbox/PROOF-TASK-XXX_complete.json
 ```
-
-## Steps
-
-1. Parse argument → locate task (ดู Argument Handling)
-2. ใช้ Read tool อ่าน contract — ดู `proof` field
-3. ตรวจ artifact ตาม decision tree
-4. ตรวจ rollback path
-5. ใช้ Write tool เขียน proof JSON ลง `ψ/outbox/`
-6. แสดง proof content + verification summary
-7. cc ธาม: `maw talk-to tham "cc: TASK-XXX proof ready — [status]"`
